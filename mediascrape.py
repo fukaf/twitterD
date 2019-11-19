@@ -94,7 +94,7 @@ def download_vid(url, dump_dir, filename):
 
     r = requests.post(root_url, data=data, headers=headers)
     soup = bs(r.text, 'html.parser')
-    divs = soup.find_all("div", class_="btn-row")[1:-1]
+    divs = soup.find_all("div", class_="btn-row")[1:]
     size_list = []
     for d in divs:
         s = d.span.string
@@ -106,7 +106,7 @@ def download_vid(url, dump_dir, filename):
     durl = divs[np.argmax(size_list)].a.attrs['onclick'][len('play_video(')+1:-2]
 
     with open(dump_dir+"/"+filename, 'wb') as f:
-        f.write(requests.get(durl, headers=headers))
+        f.write(requests.get(durl, headers=headers).content)
     
 
 
