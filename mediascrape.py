@@ -1,3 +1,4 @@
+# Thanks the author of mediascrape
 import TwitterMediaSearch
 import os
 import urllib.request
@@ -6,6 +7,7 @@ import requests
 import re
 from pathlib import Path
 from bs4 import BeautifulSoup as bs
+import numpy as np
 
 def mediascrape(user, output):
     print('Fetching user media...')
@@ -78,6 +80,8 @@ def mediascrape(user, output):
             print('Fetch video {}/{} - {}'.format(idx + 1, total, url))
             try:
                 download_vid(url, dump_dir, filename)
+            except Exception as e:
+                print(e)
 
     print('')
     print('Done scraping media!')
@@ -88,9 +92,22 @@ def download_vid(url, dump_dir, filename):
     }
     data = {'twitter_url': url}
 
-    r = r
+    r = requests.post(root_url, data=data, headers=headers)
+    soup = bs(r.text, 'html.parser')
+    divs = soup.find_all("div", class_="btn-row")[1:-1]
+    size_list = []
+    for d in divs:
+        s = d.span.string
+        sizes = re.findall(r"(\d+)", s)
+        size = int(sizes[0])*int(sizes[1])
+        # format
+        # f = re.findall("")
+        size_list.append(size)
+    durl = divs[np.argmax(size_list)].a.attrs['onclick'][len('play_video(')+1:-2]
 
-
+    with open(dump_dir+"/"+filename, 'wb') as f:
+        f.write(requests.get(durl, headers=headers))
+    
 
 
 if __name__ == '__main__':
