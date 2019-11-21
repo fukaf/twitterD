@@ -9,21 +9,50 @@ from pathlib import Path
 from bs4 import BeautifulSoup as bs
 import numpy as np
 from datetime import datetime as dt
+import pymongo
+
+mongo_url = "127.0.0.1:27017"
+
+client = pymongo.MongoClient(mongo_url)
+
+DATABASE = "twitter"
+db = client[DATABASE]
+
+COLLECTION = "twitter"
+
+db_coll = db[COLLECTION]
 
 def mediascrape(user, output, delta_t=86400, ignore = False):
+    # check if enough space left
     if not check_memory():
         return
-    
-    path = os.path.dirname(os.path.realpath(__file__))
-    default_output = path + '/media'
+    # check if user in mongo and initialize it
+    q = {"user": user}
+    results = db_coll.find_one(q)
+    if results is None:
+        document = {
+            "user": user,
+            "imgs": [],
+            "vids": [],
+            "complete": False,
+            }   
+        db_coll.insert_one(document)
 
-    dump_dir = '{0}/{1}'.format(output or default_output, user)
-    if not os.path.exists(dump_dir):
-        os.makedirs(dump_dir)
-        ignore = True
+        results = db_coll.find_one(q)
 
+
+        # check if exists usr_dir
+        path = os.path.dirname(os.path.realpath(__file__))
+        default_output = path + '/media'
+
+        dump_dir = '{0}/{1}'.format(output or default_output, user)
+        if not os.path.exists(dump_dir):
+            os.makedirs(dump_dir)
+            ignore = True
+
+    # if not first time, check last modify time of usr_dir
     if not ignore:
-        if not check_modified(dump_dir, delta_t):
+        if not check_modified(dump_dir, delta_t) and results["complete"]:
             # do not update
             print("{} is recently updated. Skipping...".format(user))
             return
@@ -68,17 +97,20 @@ def mediascrape(user, output, delta_t=86400, ignore = False):
         url = img.get('url')
         filename = img.get('filename')
         # only save the photo if it does not already exist
-        photo_already_exists = Path(dump_dir + "/" + filename).is_file()
-        if photo_already_exists:
+        mongo_imgs = results["imgs"]
+        if filename in mongo_imgs:
             print('Skipping image {} - already exists!'.format(idx + 1))
         else:
             print('Fetching image {}/{} - {}'.format(idx + 1, total, url))
             try:
                 urllib.request.urlretrieve(url, '{0}/{1}'.format(dump_dir, filename))
+                mongo_imgs.append(filename)
             except Exception as e:
                 print(e)
 
+
     print('')
+
     # fetch + save videos
     total = len(vid_urls)
     print('')
@@ -87,16 +119,21 @@ def mediascrape(user, output, delta_t=86400, ignore = False):
     for idx, vid in enumerate(vid_urls):
         url = vid.get('url')
         filename = vid.get('filename')
-        exists = Path(dump_dir + "/" + filename).is_file()
-        if exists:
+        mongo_vids = results['vids']
+        if filename in mongo_vids:
             print('Skip video {} - already exists!'.format(idx + 1))
         else:
             print('Fetch video {}/{} - {}'.format(idx + 1, total, url))
             try:
                 download_vid(url, dump_dir, filename)
+                mongo_vids.append(filename)
             except Exception as e:
                 print(e)
 
+    # update mongodb
+    db_coll.update_one({"user": user},{"$set":{"imgs": mongo_imgs}})
+    db_coll.update_one({"user": user},{"$set":{"vids": mongo_vids}})
+    db_coll.update_one({"user": user},{"$set":{"complete": True}})
     print('')
     print('Done scraping media!')
 
