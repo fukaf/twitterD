@@ -6,13 +6,13 @@ mongo_url = "127.0.0.1:27017"
 
 client = pymongo.MongoClient(mongo_url)
 
-DATABASE = "test"
+DATABASE = "twitter"
 db = client[DATABASE]
 
-COLLECTION = "test"
+COLLECTION = "twitter"
 
 db_coll = db[COLLECTION]
 
-q = {"user": "aaa"}
-r = db_coll.find_one(q)
-print(r)
+filename = "follow.txt"
+with io.open(filename, encoding='utf-8') as f:
+    name_list = f.read().splitlines()

@@ -26,7 +26,7 @@ with io.open(filename, encoding='utf-8') as f:
 
 count = 1
 for name in name_list:
-    if count > length:
+    if count > length and length > 0:
         print("First {} users scraped!".format(length))
         break
     try:
