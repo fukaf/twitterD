@@ -22,7 +22,7 @@ COLLECTION = "twitter"
 
 db_coll = db[COLLECTION]
 
-def mediascrape(user, output, delta_t=86400, ignore = False):
+def mediascrape_mongo(user, output, delta_t=86400, ignore = False):
     # check if enough space left
     if not check_memory():
         return
@@ -197,4 +197,4 @@ if __name__ == '__main__':
     user = args['user']
     output = args['output']
     ignore = args['ignore']
-    mediascrape(user, output, ignore=ignore)
+    mediascrape_mongo(user, output, ignore=ignore)
